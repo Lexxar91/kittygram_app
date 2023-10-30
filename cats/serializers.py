@@ -1,11 +1,11 @@
 import base64
-
 from django.core.files.base import ContentFile
 from rest_framework import serializers
 import webcolors
 
 import datetime as dt
 
+from .core.constants import THIRTY, MORE_THAN_THIRTY, NOT_NAME_FOR_COLOR
 from .models import Achievement, AchievementCat, Cat
 
 
@@ -17,7 +17,7 @@ class Hex2NameColor(serializers.Field):
         try:
             data = webcolors.hex_to_name(data)
         except ValueError:
-            raise serializers.ValidationError('Для этого цвета нет имени')
+            raise serializers.ValidationError(NOT_NAME_FOR_COLOR)
         return data
 
 
@@ -26,7 +26,7 @@ class AchievementSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Achievement
-        fields = ('id', 'achievement_name')
+        fields = ('id', 'achievement_name',)
 
 
 class Base64ImageField(serializers.ImageField):
@@ -45,6 +45,7 @@ class CatSerializer(serializers.ModelSerializer):
     color = Hex2NameColor()
     age = serializers.SerializerMethodField()
     image = Base64ImageField(required=False, allow_null=True)
+    birth_year = serializers.IntegerField()
 
     class Meta:
         model = Cat
@@ -54,8 +55,14 @@ class CatSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('owner',)
 
+    def validate_birth_year(self, value):
+        current_year = dt.datetime.now().year
+        if current_year - int(value) > THIRTY:
+            raise serializers.ValidationError(MORE_THAN_THIRTY)
+        return value
+
     def get_age(self, obj):
-        return dt.datetime.now().year - obj.birth_year
+        return dt.datetime.now().year - int(obj.birth_year)
 
     def create(self, validated_data):
         if 'achievements' not in self.initial_data:
