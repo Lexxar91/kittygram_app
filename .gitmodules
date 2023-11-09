@@ -1,0 +1,3 @@
+[submodule "kittygram_fronted"]
+	path = kittygram_fronted
+	url = https://github.com/yandex-praktikum/kittygram_frontend
