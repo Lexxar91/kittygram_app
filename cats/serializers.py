@@ -10,10 +10,22 @@ from .models import Achievement, AchievementCat, Cat
 
 
 class Hex2NameColor(serializers.Field):
+    """
+    Сериализатор для преобразования цвета из HEX в имя цвета.
+    """
     def to_representation(self, value):
         return value
 
     def to_internal_value(self, data):
+        """
+        Преобразует шестнадцатеричный цвет в имя цвета.
+        Args:
+            data (str): Шестнадцатеричный код цвета.
+        Returns:
+            str: Имя цвета.
+        Raises:
+            serializers.ValidationError: Если не удается найти имя для указанного цвета.
+        """
         try:
             data = webcolors.hex_to_name(data)
         except ValueError:
@@ -22,6 +34,9 @@ class Hex2NameColor(serializers.Field):
 
 
 class AchievementSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор достижений котов.
+    """
     achievement_name = serializers.CharField(source='name')
 
     class Meta:
@@ -30,6 +45,13 @@ class AchievementSerializer(serializers.ModelSerializer):
 
 
 class Base64ImageField(serializers.ImageField):
+    """
+    Преобразует base64-кодированное изображение в объект ContentFile.
+    Args:
+        data (str): base64-кодированное изображение в формате "data:image/формат;base64,данные".
+    Returns:
+        ContentFile: Объект ContentFile, представляющий декодированное изображение.
+    """
     def to_internal_value(self, data):
         if isinstance(data, str) and data.startswith('data:image'):
             format, imgstr = data.split(';base64,')
@@ -41,6 +63,9 @@ class Base64ImageField(serializers.ImageField):
 
 
 class CatSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор модели Cat.
+    """
     achievements = AchievementSerializer(required=False, many=True)
     color = Hex2NameColor()
     age = serializers.SerializerMethodField()
@@ -56,6 +81,10 @@ class CatSerializer(serializers.ModelSerializer):
         read_only_fields = ('owner',)
 
     def validate_birth_year(self, value):
+        """
+        Проверка поля birth_year, что бы коту не могло быть
+        больше 30 лет
+        """
         current_year = dt.datetime.now().year
         if current_year - int(value) > THIRTY:
             raise serializers.ValidationError(MORE_THAN_THIRTY)
@@ -65,6 +94,13 @@ class CatSerializer(serializers.ModelSerializer):
         return dt.datetime.now().year - int(obj.birth_year)
 
     def create(self, validated_data):
+        """
+        Создает нового кота.
+        Args:
+            validated_data (dict): Проверенные данные для создания кота.
+        Returns:
+            Cat: Новый созданный кот.
+        """
         if 'achievements' not in self.initial_data:
             cat = Cat.objects.create(**validated_data)
             return cat
@@ -81,6 +117,14 @@ class CatSerializer(serializers.ModelSerializer):
             return cat
 
     def update(self, instance, validated_data):
+        """
+        Обновляет существующего кота.
+        Args:
+            instance (Cat): Экземпляр кота, который нужно обновить.
+            validated_data (dict): Проверенные данные для обновления кота.
+        Returns:
+            Cat: Обновленный экземпляр кота.
+        """
         instance.name = validated_data.get('name', instance.name)
         instance.color = validated_data.get('color', instance.color)
         instance.birth_year = validated_data.get(
